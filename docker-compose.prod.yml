@@ -1,0 +1,67 @@
+version: '3.7'
+services:
+  web:
+    container_name: ${PROJECT_NAME}_WEB
+    image: nginx:latest
+    restart: always
+    volumes:
+      #Set default configuration to nginx  
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d/
+      # share projet folder with nginx
+      - ./app/back:/var/www/pepite
+    labels:
+      # permet de créer un routeur Traefik 
+      - "traefik.enable=true"
+      - "traefik.http.services.eshop.loadbalancer.server.port=80"
+      # - "traefik.http.routers.eshop.rule=Host(`boutique.pepite.shop`)"
+      # - "traefik.http.routers.eshop.rule=Host(`www.boutique.partnaire.fr`,`laboutique.cftc.fr`,`amp.pepitegoodies.com`,`boutique.pepite.shop`,`capdel.pepitegoodies.com`,`goodies.suez.com`,`asdia.pepitegoodies.com`,`www.radiofrance.pepitegoodies.com`,`gigroup.pepitegoodies.com`,`gieorpilyon.pepitegoodies.com`,`www.radiofrance.pepitegoodies.com`,`eshopdemo1.pepitegoodies.com`,`eshopdemo2.pepitegoodies.com`,`eshopdemo3.pepitegoodies.com`,`eshopdemo4.pepitegoodies.com`,`eshopdemo5.pepitegoodies.com`,`eshopdemo6.pepitegoodies.com`,`eshopdemo7.pepitegoodies.com`,`eshopdemo8.pepitegoodies.com`,`eshopdemo9.pepitegoodies.com`,`eshopdemo10.pepitegoodies.com`)"
+      - "traefik.http.routers.eshop.rule=Host(`www.eshopdemo.pepitegoodies.com`,`www.commandes-tde.promoplus.fr`,`www.commandes-pge.promoplus.fr`,`elivie.pepitegoodies.com`,`www.myskemastore.promoplus.fr`,`boutique-exco.promoplus.fr`,`goodies.paprec.com`,`boutique.grdf.fr`,`gieorpilyon.pepitegoodies.com`,`www.boutique.partnaire.fr`,`eshopdemo5.pepitegoodies.com`,`laboutique.cftc.fr`,`amp.pepitegoodies.com`,`boutique.pepite.shop`,`capdel.pepitegoodies.com`,`goodies.suez.com`,`asdia.pepitegoodies.com`,`www.radiofrance.pepitegoodies.com`,`gigroup.pepitegoodies.com`,`eshopdemo3.pepitegoodies.com`,`eshopdemo1.pepitegoodies.com`,`eshopdemo2.pepitegoodies.com`,`eshopdemo4.pepitegoodies.com`,`eshopdemo5.pepitegoodies.com`,`eshopdemo6.pepitegoodies.com`,`eshopdemo7.pepitegoodies.com`,`eshopdemo8.pepitegoodies.com`,`eshopdemo9.pepitegoodies.com`,`eshopdemo10.pepitegoodies.com`)"
+      - "traefik.http.routers.eshop.entrypoints=websecure"
+      - "traefik.http.routers.eshop.tls.certresolver=myhttpchallenge"
+    env_file:
+      - .env
+    networks: 
+      - traefik-proxy
+  php:
+    container_name: ${PROJECT_NAME}_PHP
+    networks: 
+      - traefik-proxy
+    build:
+      context: ./docker/php
+      dockerfile: Dockerfile
+      args:
+        USER_ID: '${USER_ID:-1000}'
+        GROUP_ID: '${GROUP_ID:-1000}'
+        USER: '${USER:-User}'
+        
+    volumes:
+      - ./app/back:/var/www/pepite
+    ports:
+      - ${BACK_PORT}:8000
+    env_file:
+      - .env
+    depends_on:
+      - mysql
+  mysql:
+    image: mariadb:latest
+    container_name: ${PROJECT_NAME}_MYSQL
+    command: --max_allowed_packet=130023424
+    networks: 
+      - traefik-proxy
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+    volumes:
+      - mysqldata:/var/lib/mysql
+    ports:
+      - 3306:3306
+    env_file:
+      - .env
+networks:
+  traefik-proxy:
+        external: true
+volumes:
+  mysqldata: {}
